@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试火山引擎 AI 生图 API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        button {
+            background: #ff6b35;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #ff5722;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .error {
+            color: #d32f2f;
+        }
+        .success {
+            color: #388e3c;
+        }
+        img {
+            max-width: 100%;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #ff6b35;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 测试火山引擎 AI 生图 API</h1>
+
+        <div>
+            <label for="prompt"><strong>输入提示词：</strong></label>
+            <textarea id="prompt" placeholder="请输入图片描述...">星际穿越，黑洞，黑洞里冲出一辆快支离破碎的复古列车，抢视觉冲击力，电影大片，末日既视感，动感，对比色，oc 渲染，光线追踪，动态模糊，景深，超现实主义，深蓝，画面通过细腻的丰富的色彩层次塑造主体与场景，质感真实，暗黑风背景的光影效果营造出氛围，整体兼具艺术幻想感，夸张的广角透视效果，耀光，反射，极致的光影，强引力，吞噬</textarea>
+        </div>
+
+        <button id="generateBtn" onclick="generateImage()">生成图片</button>
+
+        <div id="result" class="result" style="display:none;"></div>
+    </div>
+
+    <script>
+        async function generateImage() {
+            const prompt = document.getElementById('prompt').value;
+            const btn = document.getElementById('generateBtn');
+            const result = document.getElementById('result');
+
+            if (!prompt.trim()) {
+                alert('请输入提示词');
+                return;
+            }
+
+            // 显示加载状态
+            btn.disabled = true;
+            btn.innerHTML = '生成中<span class="loading"></span>';
+            result.style.display = 'block';
+            result.innerHTML = '<p>正在调用火山引擎 API...</p>';
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        size: '2K',
+                        watermark: true
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    result.innerHTML = `
+                        <p class="success">✅ 生成成功！</p>
+                        <p><strong>提示词：</strong>${prompt}</p>
+                        <p><strong>图片URL：</strong><a href="${data.url}" target="_blank">${data.url}</a></p>
+                        <img src="${data.url}" alt="生成的图片">
+                        <details style="margin-top: 10px;">
+                            <summary><strong>完整响应数据</strong></summary>
+                            <pre style="background: #f5f5f5; padding: 10px; overflow-x: auto; font-size: 12px;">${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `;
+                } else {
+                    result.innerHTML = `
+                        <p class="error">❌ 生成失败</p>
+                        <p><strong>错误信息：</strong>${data.error}</p>
+                        <details style="margin-top: 10px;">
+                            <summary><strong>错误详情</strong></summary>
+                            <pre style="background: #f5f5f5; padding: 10px; overflow-x: auto; font-size: 12px;">${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `;
+                }
+            } catch (error) {
+                result.innerHTML = `
+                    <p class="error">❌ 请求失败</p>
+                    <p><strong>错误信息：</strong>${error.message}</p>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '生成图片';
+            }
+        }
+    </script>
+</body>
+</html>

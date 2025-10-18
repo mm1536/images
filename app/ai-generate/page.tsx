@@ -34,10 +34,10 @@ export default function AIGeneratePage() {
   ];
 
   const examplePrompts = [
-    '一只可爱的橘猫坐在窗台上，阳光洒在它身上',
-    '未来科技城市，霓虹灯闪烁，飞行汽车穿梭其中',
-    '宁静的湖边小屋，周围环绕着茂密的森林',
-    '宇航员在月球表面漫步，地球在背景中升起'
+    '星际穿越，黑洞，黑洞里冲出一辆快支离破碎的复古列车，抢视觉冲击力，电影大片，末日既视感，动感，对比色，oc 渲染，光线追踪，动态模糊，景深，超现实主义，深蓝，画面通过细腻的丰富的色彩层次塑造主体与场景，质感真实，暗黑风背景的光影效果营造出氛围，整体兼具艺术幻想感，夸张的广角透视效果，耀光，反射，极致的光影，强引力，吞噬',
+    '一只可爱的橘猫坐在窗台上，阳光洒在它身上，温馨治愈的画面',
+    '未来科技城市，霓虹灯闪烁，飞行汽车穿梭其中，赛博朋克风格',
+    '宁静的湖边小屋，周围环绕着茂密的森林，晨雾弥漫'
   ];
 
   const generateImage = useCallback(async () => {
@@ -50,26 +50,50 @@ export default function AIGeneratePage() {
     setError('');
 
     try {
-      // 模拟AI生成图片（实际项目中应使用专业的AI生图API，如DALL-E、Midjourney、Stable Diffusion等）
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // 调用火山引擎 AI 生图 API
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          size: size === '512x512' ? '1K' : size === '1024x1024' ? '2K' : '2K',
+          watermark: true,
+        }),
+      });
 
-      // 使用占位图服务模拟生成的图片
-      const mockImageUrl = `https://picsum.photos/seed/${Date.now()}/1024/1024`;
+      const data = await response.json();
+
+      console.log('API 响应数据:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || '生成失败');
+      }
+
+      // 检查并提取图片 URL
+      const imageUrl = data.url || data.data?.[0]?.url;
+
+      if (!imageUrl) {
+        console.error('未找到图片 URL，完整响应:', data);
+        throw new Error('未能获取图片 URL');
+      }
 
       const newImage: GeneratedImage = {
-        url: mockImageUrl,
+        url: imageUrl,
         prompt: prompt,
         timestamp: Date.now()
       };
 
+      console.log('生成的图片:', newImage);
       setGeneratedImages(prev => [newImage, ...prev]);
       setIsGenerating(false);
     } catch (error) {
       console.error('生成失败:', error);
-      setError('生成失败，请重试');
+      setError(error instanceof Error ? error.message : '生成失败，请重试');
       setIsGenerating(false);
     }
-  }, [prompt]);
+  }, [prompt, size]);
 
   const downloadImage = useCallback((url: string, index: number) => {
     const link = document.createElement('a');
@@ -98,15 +122,15 @@ export default function AIGeneratePage() {
       <main className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Info Banner */}
-          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4 mb-6">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
             <div className="flex items-start">
-              <svg className="w-6 h-6 text-orange-600 dark:text-orange-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-blue-600 dark:text-blue-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div>
-                <h3 className="text-sm font-semibold text-orange-900 dark:text-orange-300 mb-1">演示功能说明</h3>
-                <p className="text-sm text-orange-800 dark:text-orange-400">
-                  当前使用的是占位图演示。如需真实AI生图效果，请集成 OpenAI DALL-E、Stable Diffusion、Midjourney 等专业 AI 生图 API。
+                <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-1">火山引擎 AI 生图</h3>
+                <p className="text-sm text-blue-800 dark:text-blue-400">
+                  使用火山引擎的 AI 图片生成 API，支持多种图片尺寸和风格。请输入详细的描述以获得更好的生成效果。
                 </p>
               </div>
             </div>
@@ -228,6 +252,11 @@ export default function AIGeneratePage() {
                             src={image.url}
                             alt={`Generated ${index + 1}`}
                             className="w-full h-auto"
+                            onError={(e) => {
+                              console.error('图片加载失败:', image.url);
+                              e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect width="400" height="400" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16" fill="%23999"%3E图片加载失败%3C/text%3E%3C/svg%3E';
+                            }}
+                            onLoad={() => console.log('图片加载成功:', image.url)}
                           />
                           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-300 flex items-center justify-center">
                             <button
@@ -241,6 +270,9 @@ export default function AIGeneratePage() {
                         <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                           <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
                             {image.prompt}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            URL: {image.url}
                           </p>
                         </div>
                       </div>
